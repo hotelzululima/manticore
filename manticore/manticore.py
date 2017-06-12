@@ -594,8 +594,8 @@ class Manticore(object):
         if not solver.can_be_true(state.constraints, assertion):
             logger.info(str(state.cpu))
             logger.info("Assertion %x -> {%s} does not hold. Aborting state.",
-                    state.cpu.PC, program)
-            raise AbandonState()
+                    state.cpu.pc, program)
+            raise TerminateState()
 
         #Everything is good add it.
         state.constraints.add(assertion)

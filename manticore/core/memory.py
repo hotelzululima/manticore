@@ -26,16 +26,32 @@ class MemoryException(Exception):
     def __str__(self):
         return '%s <%s>'%(self.cause, '%08x'%self.address)
 
-class SymbolicMemoryException(MemoryException):
+class InvalidMemoryAccess(MemoryException):
+    def __init__(self, address, mode):
+        self.mode = mode
+        super(InvalidMemoryAccess, self, ).__init__('Invalid mode trying to access memory in mode {}'.format(mode), address)
 
+class InvalidSymbolicMemoryAccess(InvalidMemoryAccess):
     def __init__(self, cause, address, size, constraint):
-        super(SymbolicMemoryException, self, ).__init__(cause, address)
+        super(InvalidSymbolicMemoryAccess, self, ).__init__(cause, address)
         #the crashing constraint you need to assert 
         self.constraint = constraint 
         self.size = size
 
     def __str__(self):
-        return '%s <%s>'%(self.cause, issymbolic(self.address) and repr(self.address) or '%08x'%self.address)
+        return '%s <%s>'%(self.cause, repr(self.address))
+
+
+class ConcretizeMemory(MemoryException):
+    '''
+    Raised when a symbolic memory cell needs to be concretized.
+    '''
+    def __init__(self, mem, address, size, policy='MINMAX'):
+        self.message = "Concretizing memory address {} size {}".format(address, size)
+        self.mem = mem
+        self.address = address
+        self.size = size
+        self.policy = policy
 
 class Map(object):
     '''
@@ -905,7 +921,7 @@ class SMemory(Memory):
                             crashing_condition = Operators.AND(Operators.OR( (address+size).ult(start), address.uge(end) ), crashing_condition)
 
                 if solver.can_be_true(self.constraints, crashing_condition):
-                    raise SymbolicMemoryException('No access reading symbolic', address, size, crashing_condition)
+                    raise InvalidSymbolicMemoryAccess('No access reading symbolic', address, size, crashing_condition)
 
 
                 #INCOMPLETE Result! We could also fork once for every map
@@ -925,7 +941,7 @@ class SMemory(Memory):
                     crashing_condition = Operators.OR(address == base, crashing_condition)
 
             if solver.can_be_true(self.constraints, crashing_condition):
-                raise SymbolicMemoryException('No access reading symbolic', address, size, crashing_condition)
+                raise InvalidSymbolicMemoryAccess('No access reading symbolic', address, size, crashing_condition)
 
             condition = False
             for base in solutions:
@@ -977,7 +993,7 @@ class SMemory(Memory):
                     crashing_condition = Operators.OR(address == base, crashing_condition)
 
             if solver.can_be_true(self.constraints, crashing_condition):
-                raise SymbolicMemoryException('No access writing symbolic', address, size, crashing_condition)
+                raise InvalidSymbolicMemoryAccess('No access writing symbolic', address, size, crashing_condition)
 
             for offset in xrange(size):
                 for base in solutions:

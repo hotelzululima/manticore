@@ -4,10 +4,9 @@ import sys, os, struct
 from ..core.memory import Memory, MemoryException, SMemory32, Memory32
 from ..core.smtlib import Expression, Operators, solver
 # TODO use cpu factory
-from ..core.cpu.x86 import I386Cpu, Sysenter, I386StdcallAbi
-from ..core.cpu.abstractcpu import Interruption, Syscall, \
-        ConcretizeRegister, ConcretizeArgument, IgnoreAPI
-from ..core.executor import ForkState, SyscallNotImplemented
+from ..core.cpu.x86 import I386Cpu, Syscall
+from ..core.cpu.abstractcpu import Interruption, Syscall
+from ..core.state import ForkState, TerminateState
 from ..utils.helpers import issymbolic
 from ..platforms.platform import Platform
 
@@ -20,9 +19,10 @@ import random
 from windows_syscalls import syscalls_num
 logger = logging.getLogger("PLATFORM")
 
-class ProcessExit(Exception):
-    def __init__(self, code):
-        super(ProcessExit, self).__init__("Process exited correctly. Code: %s"%code)
+
+class SyscallNotImplemented(TerminateState):
+    def __ini__(self, message):
+        super(SyscallNotImplemented,self).__init__(message, testcase=True)
 
 class RestartSyscall(Exception):
     pass
@@ -32,11 +32,6 @@ class Deadlock(Exception):
 
 class SymbolicAPIArgument(Exception):
     pass
-
-class SymbolicSyscallArgument(ConcretizeRegister):
-    def __init__(self, number, message='Concretizing syscall argument', policy='SAMPLED'):
-        reg_name = ['EBX', 'ECX', 'EDX', 'ESI', 'EDI', 'EBP' ][number]
-        super(SymbolicSyscallArgument, self).__init__(reg_name, message, policy)
 
 #FIXME Consider moving this to executor.state?
 def toStr(state, value):
@@ -330,7 +325,7 @@ class Windows(Platform):
             self.clocks += 1
             if self.clocks % 10000 == 0:
                 self.sched()
-        except Sysenter as e:
+        except Syscall as e:
             try:
                 e = None
                 self.sysenter(self.current)

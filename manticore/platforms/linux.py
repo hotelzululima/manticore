@@ -14,11 +14,10 @@ from ..core.memory import SMemory32, SMemory64, Memory32, Memory64
 from ..core.smtlib import Operators, ConstraintSet
 from ..platforms.platform import Platform
 from ..core.cpu.arm import *
-from ..core.executor import SyscallNotImplemented, ProcessExit
+from ..core.executor import TerminateState
 from . import linux_syscalls
 
 logger = logging.getLogger("PLATFORM")
-
 
 class RestartSyscall(Exception):
     pass
@@ -1478,7 +1477,7 @@ class Linux(Platform):
         #self.procs[procid] = None
         logger.debug("EXIT_GROUP PROC_%02d %s", procid, error_code)
         if len(self.running) == 0 :
-            raise ProcessExit(error_code)
+            raise TerminateState("ProcessExit %r"%error_code, testcase=True)
         return error_code
 
     def sys_ptrace(self, request, pid, addr, data):
@@ -1524,7 +1523,7 @@ class Linux(Platform):
             name = table.get(index,None)
             implementation = getattr(self, name)
         except (AttributeError, KeyError):
-            raise SyscallNotImplemented(self.current.address_bit_size, index, name)
+            raise Exception("SyscallNotImplemented %d %d"%(self.current.address_bit_size, index))
 
         return self._syscall_abi.invoke(implementation)
 

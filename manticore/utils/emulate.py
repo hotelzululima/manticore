@@ -173,7 +173,7 @@ class UnicornEmulator(object):
                 for offset, byte in enumerate(values, start=address):
                     if issymbolic(byte):
                         from ..core.cpu.abstractcpu import ConcretizeMemory
-                        raise ConcretizeMemory(offset, 8,
+                        raise ConcretizeMemory(self._cpu.memory, offset, 8,
                                                "Concretizing for emulation")
 
                 self._emu.mem_write(address, ''.join(values))
@@ -218,7 +218,7 @@ class UnicornEmulator(object):
             val = self._cpu.read_register(reg)
             if issymbolic(val):
                 from ..core.cpu.abstractcpu import ConcretizeRegister
-                raise ConcretizeRegister(reg, "Concretizing for emulation.",
+                raise ConcretizeRegister(self._cpu, reg, "Concretizing for emulation.",
                                          policy='ONE') 
             self._emu.reg_write(self._to_unicorn_id(reg), val)
 

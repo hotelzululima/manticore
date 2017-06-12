@@ -16,14 +16,13 @@ except:
     import StringIO
 from math import ceil, log
 
-from ..utils.nointerrupt import DelayedKeyboardInterrupt
-from .cpu.abstractcpu import ConcretizeRegister, ConcretizeMemory, \
-        InvalidPCException, IgnoreAPI, SymbolicPCException
-from .memory import MemoryException, SymbolicMemoryException
+from ..utils.nointerrupt import WithKeyboardInterruptAs
+from .cpu.abstractcpu import DecodeException, ConcretizeRegister
+from .memory import ConcretizeMemory
 from .smtlib import solver, Expression, Operators, SolverException, Array, BitVec, Bool, ConstraintSet
 from ..utils.event import Signal
 from ..utils.helpers import issymbolic
-
+from .state import Concretize, TerminateState
 from multiprocessing.managers import SyncManager
 
 def mgr_init():
@@ -34,29 +33,6 @@ manager.start(mgr_init)
 from .state import AbandonState, State
 
 logger = logging.getLogger("EXECUTOR")
-
-class SyscallNotImplemented(Exception):
-    ''' Exception raised when you try to call a not implemented
-        system call. Go to linux.py and add it!
-    '''
-    pass
-
-class ProcessExit(Exception):
-    def __init__(self, code):
-        super(ProcessExit, self).__init__("Process exited correctly. Code: %s"%code)
-
-class RestartSyscall(Exception):
-    pass
-
-class Deadlock(Exception):
-    pass
-
-class MaxConsecutiveIntructions(Exception):
-    pass
-
-class ForkState(Exception):
-    def __init__(self, condition):
-        self.condition=condition
 
 
 def sync(f):
@@ -643,7 +619,7 @@ class Executor(object):
         current_icount = 0
         local_visited = set()
 
-        with DelayedKeyboardInterrupt():
+        with WithKeyboardInterruptAs(self.shutdown):
             #notify siblings we are about to start a run
             self._startRun()
 
@@ -850,7 +826,6 @@ class Executor(object):
                     logger.error(log) 
                 current_state = None
 
-        with DelayedKeyboardInterrupt():
             #notify siblings we are about to stop this run
             self._stopRun(count)
             if self.profiling:
