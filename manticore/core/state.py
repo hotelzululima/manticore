@@ -4,10 +4,7 @@ from collections import OrderedDict
 from .smtlib import solver
 from ..utils.helpers import issymbolic
 
-
 #import exceptions
-from .cpu.abstractcpu import ConcretizeRegister
-from .memory import ConcretizeMemory
 from ..platforms.platform import *
 
 class StateException(Exception):
@@ -132,29 +129,7 @@ class State(object):
         self._child = None
 
     def execute(self):
-        try:
-            result = self.platform.execute()
-
-        #Instead of State importing SymbolicRegisterException and SymbolicMemoryException 
-        # from cpu/memory shouldn't we import Concretize from linux, cpu, memory ?? 
-        # We are forcing State to have abstractcpu
-        except ConcretizeRegister as e:
-            expression = self.cpu.read_register(e.reg_name)
-            def setstate(state, value):
-                state.cpu.write_register(e.reg_name, value)
-            raise Concretize(e.message,
-                                expression=expression, 
-                                setstate=setstate,
-                                policy=e.policy)
-        except ConcretizeMemory as e:
-            expression = self.cpu.read_int(e.address, e.size)
-            def setstate(state, value):
-                state.cpu.write_int(e.reg_name, value, e.size)
-            raise Concretize(e.message,
-                                expression=expression, 
-                                setstate=setstate,
-                                policy=e.policy)
-
+        result = self.platform.execute()
         #Remove when code gets stable?
         assert self.platform.constraints is self.constraints
         assert self.mem.constraints is self.constraints

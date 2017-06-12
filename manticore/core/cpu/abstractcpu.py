@@ -690,6 +690,26 @@ class Cpu(object):
         '''
         Decode, and execute one instruction pointed by register PC
         '''
+        try:
+            self._execute()
+        except ConcretizeRegister as e:
+            expression = self.read_register(e.reg_name)
+            def setstate(state, value):
+                self.write_register(e.reg_name, value)
+            raise Concretize(e.message,
+                                expression=expression, 
+                                setstate=setstate,
+                                policy=e.policy)
+        except ConcretizeMemory as e:
+            expression = self.read_int(e.address, e.size)
+            def setstate(state, value):
+                self.write_int(e.reg_name, value, e.size)
+            raise Concretize(e.message,
+                                expression=expression, 
+                                setstate=setstate,
+                                policy=e.policy)
+
+    def _execute(self):
 
         # Decode the instruction if it wasn't explicitly decoded
         if self.instruction is None or self.instruction.address != self.PC:
